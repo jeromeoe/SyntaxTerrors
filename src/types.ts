@@ -20,6 +20,23 @@ export interface Lead {
   aiEase: number;
   /** Overall score calculated from individual metrics (0-100) */
   totalScore: number;
+  /** Additional scoring details */
+  scoringDetails?: {
+    /** Weights applied to each metric */
+    weights: Record<string, number>;
+    /** List of penalties applied */
+    penalties: Array<{
+      metric: string;
+      threshold: number;
+      actual: number;
+      penaltyFactor: number;
+      penaltyValue: number;
+    }>;
+    /** Raw total score before penalties */
+    rawTotal: number;
+    /** Total penalty applied */
+    totalPenalty: number;
+  };
   /** Array of key insights about the lead */
   insights: string[];
   /** Array of actionable recommendations */
