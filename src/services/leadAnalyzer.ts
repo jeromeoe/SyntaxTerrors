@@ -1,8 +1,6 @@
 import type { Lead } from '../types';
 
-const API_URL = import.meta.env.PROD 
-  ? '/api/analyze-lead'  // Production: relative path when served by Express
-  : 'http://localhost:5000/api/analyze-lead';  // Development
+const API_URL = 'http://localhost:5000/api/analyze-lead';
 
 /**
  * Simulates the analysis of a website URL to generate lead insights

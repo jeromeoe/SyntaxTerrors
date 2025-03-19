@@ -2,6 +2,14 @@ import React from 'react';
 import { BarChart, Brain, DollarSign, PenTool, CheckCircle } from 'lucide-react';
 import type { LeadCardProps } from '../types';
 
+const SCORE_WEIGHTS = {
+  dealPotential: 0.3,
+  practicality: 0.2,
+  revenue: 0.25,
+  aiEase: 0.15,
+  difficulty: 0.1
+} as const;
+
 /**
  * Component for displaying detailed lead information and scoring
  */
@@ -23,7 +31,7 @@ export function LeadCard({ lead }: LeadCardProps) {
   }) => (
     <div className="flex items-center gap-2" role="group" aria-label={`${label}: ${score}`}>
       <Icon size={20} className={scoreColor(score)} aria-hidden="true" />
-      <span className="text-gray-700">{label}:</span>
+      <span className="text-gray-700">{label} ({(SCORE_WEIGHTS[label.toLowerCase().replace(' ', '')] * 100)}%):</span>
       <span className={`font-semibold ${scoreColor(score)}`}>{score}</span>
     </div>
   );
@@ -46,9 +54,9 @@ export function LeadCard({ lead }: LeadCardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <ScoreItem score={lead.dealPotential} label="Deal Potential" icon={BarChart} />
         <ScoreItem score={lead.practicality} label="Practicality" icon={PenTool} />
-        <ScoreItem score={lead.difficulty} label="Difficulty" icon={Brain} />
         <ScoreItem score={lead.revenue} label="Revenue" icon={DollarSign} />
         <ScoreItem score={lead.aiEase} label="AI Ease" icon={CheckCircle} />
+        <ScoreItem score={lead.difficulty} label="Difficulty" icon={Brain} />
       </div>
 
       <div className="bg-blue-50 rounded-lg p-4 mb-4">

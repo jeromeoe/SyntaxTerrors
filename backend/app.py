@@ -1,16 +1,21 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import os
 import time
-import random
+import requests
+from dotenv import load_dotenv
 from urllib.parse import urlparse
-import hashlib
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-def generate_id(url: str) -> str:
-    """Generate a unique ID from a URL using SHA-256 hash."""
-    return hashlib.sha256(url.encode()).hexdigest()[:8]
+# Get API key from environment variables
+JIGSAWSTACK_API_KEY = os.getenv('JIGSAWSTACK_API_KEY')
+if not JIGSAWSTACK_API_KEY:
+    raise ValueError("JIGSAWSTACK_API_KEY environment variable is not set")
 
 def get_random_score() -> int:
     """Generate a random score between 60 and 95."""
@@ -37,7 +42,7 @@ def calculate_total_score(scores: dict) -> int:
 @app.route('/api/analyze-lead', methods=['POST'])
 def analyze_lead():
     """
-    Analyze a lead based on the provided URL.
+    Analyze a lead based on the provided URL using JigsawStack's Web Scraper API.
     
     Expected JSON payload: { "url": "https://example.com" }
     Returns: Lead analysis data including scores and insights
@@ -55,7 +60,18 @@ def analyze_lead():
         # Simulate processing delay
         time.sleep(2)
         
-        # Generate random scores
+        # Call JigsawStack API
+        jigsawstack_url = 'https://api.jigsawstack.com/scrape'
+        headers = {
+            'Authorization': f'Bearer {JIGSAWSTACK_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+        payload = {'url': url}
+        
+        response = requests.post(jigsawstack_url, json=payload, headers=headers)
+        response.raise_for_status()  # Raise exception for non-200 responses
+        
+        # For development, generate random scores since we don't have actual API access
         scores = {
             'dealPotential': get_random_score(),
             'practicality': get_random_score(),
@@ -94,6 +110,11 @@ def analyze_lead():
         
         return jsonify(response_data)
         
+    except requests.exceptions.RequestException as e:
+        print(f"JigsawStack API error: {str(e)}")
+        return jsonify({
+            'message': 'Error connecting to JigsawStack API'
+        }), 500
     except Exception as e:
         print(f"Error processing request: {str(e)}")
         return jsonify({
@@ -101,4 +122,11 @@ def analyze_lead():
         }), 500
 
 if __name__ == '__main__':
+    # Instructions for deployment:
+    # 1. Create a .env file with your JIGSAWSTACK_API_KEY
+    # 2. Install dependencies: pip install -r requirements.txt
+    # 3. Run locally: python app.py
+    # 4. For production deployment (e.g., Heroku):
+    #    - Create a Procfile with: web: python app.py
+    #    - Set JIGSAWSTACK_API_KEY in environment variables
     app.run(debug=True, port=5000)
