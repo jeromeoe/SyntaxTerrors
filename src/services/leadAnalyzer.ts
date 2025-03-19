@@ -4,8 +4,8 @@ import type { Lead } from '../types';
  * Configuration for the lead analyzer service
  */
 const CONFIG = {
-  // In production use relative URL, in development use full URL
-  API_URL: import.meta.env.PROD ? '/api/analyze-lead' : 'http://localhost:5000/api/analyze-lead',
+  // Always use relative URL with the proxy configured in Vite
+  API_URL: '/api/analyze-lead',
   // Retry configuration
   MAX_RETRIES: 3,
   INITIAL_RETRY_DELAY: 1000, // 1 second initial delay
@@ -72,7 +72,7 @@ async function checkNetworkConnectivity(): Promise<boolean> {
     const timeoutId = setTimeout(() => controller.abort(), 3000);
 
     try {
-      await fetch('/health-check', {
+      await fetch('/api/health-check', {
         method: 'HEAD',
         signal: controller.signal,
         cache: 'no-store',
