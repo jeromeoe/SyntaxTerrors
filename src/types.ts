@@ -37,6 +37,20 @@ export interface Lead {
     /** Total penalty applied */
     totalPenalty: number;
   };
+  /** Email information if provided */
+  email?: {
+    /** The email address */
+    address: string;
+    /** Email validation results */
+    validation: {
+      is_valid: boolean;
+      is_disposable?: boolean;
+      is_role_account?: boolean;
+      has_mx_records?: boolean;
+      domain?: string;
+      error?: string;
+    };
+  };
   /** Array of key insights about the lead */
   insights: string[];
   /** Array of actionable recommendations */
@@ -63,8 +77,8 @@ export interface LeadScoring {
  * Props for the LeadInput component
  */
 export interface LeadInputProps {
-  /** Callback function to handle URL submission */
-  onSubmit: (url: string) => void;
+  /** Callback function to handle URL and optional email submission */
+  onSubmit: (url: string, email?: string) => void;
   /** Loading state to disable input during processing */
   isLoading: boolean;
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Brain, DollarSign, PenTool, CheckCircle, Info } from 'lucide-react';
+import { BarChart, Brain, DollarSign, PenTool, CheckCircle, Info, Mail } from 'lucide-react';
 import type { LeadCardProps } from '../types';
 
 const SCORE_WEIGHTS = {
@@ -55,6 +55,19 @@ export function LeadCard({ lead }: LeadCardProps) {
           {lead.url}
         </a>
       </header>
+
+      {lead.email && (
+        <div className="mb-4 bg-blue-50 p-3 rounded flex items-start gap-2">
+          <Mail size={18} className="text-blue-600 mt-0.5" />
+          <div>
+            <div className="text-sm font-medium text-blue-900">Email Validated</div>
+            <div className="text-xs text-blue-700">{lead.email.address}</div>
+            {lead.email.validation.is_disposable && (
+              <div className="text-xs text-yellow-600 mt-1">Note: This is a disposable email address</div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <ScoreItem score={lead.dealPotential} label="Deal Potential" icon={BarChart} weight={SCORE_WEIGHTS.dealPotential} />

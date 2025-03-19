@@ -68,11 +68,12 @@ async function getErrorMessage(response: Response): Promise<string> {
  * Uses a server-side proxy to bypass CORS and website blocking
  * 
  * @param url - The website URL to analyze
+ * @param email - Optional email for validation (optional)
  * @param retryCount - Current retry attempt (internal use)
  * @returns Promise<Lead> - A promise that resolves to a Lead object
  * @throws Error with user-friendly message if analysis fails
  */
-export async function analyzeLead(url: string, retryCount = 0): Promise<Lead> {
+export async function analyzeLead(url: string, email?: string, retryCount = 0): Promise<Lead> {
   // Calculate current retry delay with exponential backoff
   const retryDelay = retryCount > 0 
     ? CONFIG.INITIAL_RETRY_DELAY * Math.pow(CONFIG.BACKOFF_FACTOR, retryCount - 1)
@@ -93,6 +94,14 @@ export async function analyzeLead(url: string, retryCount = 0): Promise<Lead> {
     const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
 
     try {
+      // Prepare request body
+      const requestBody: Record<string, any> = { url };
+      
+      // Add email if provided
+      if (email) {
+        requestBody.email = email;
+      }
+
       // Make request to our server-side proxy (not directly to JigsawStack)
       const response = await fetch(CONFIG.API_URL, {
         method: 'POST',
@@ -101,11 +110,7 @@ export async function analyzeLead(url: string, retryCount = 0): Promise<Lead> {
           // Add custom header to help identify requests from our application
           'X-Client-Application': 'AI-Lead-Qualifier',
         },
-        body: JSON.stringify({ 
-          url,
-          // Pass any additional parameters our backend might need
-          clientTimestamp: new Date().toISOString()
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
 
@@ -169,7 +174,7 @@ export async function analyzeLead(url: string, retryCount = 0): Promise<Lead> {
     if (retryCount < CONFIG.MAX_RETRIES && isRetryableError) {
       console.log(`Retrying analysis in ${Math.round(retryDelay)}ms...`);
       await delay(retryDelay);
-      return analyzeLead(url, retryCount + 1);
+      return analyzeLead(url, email, retryCount + 1);
     }
 
     // If we've exhausted retries or it's not a retryable error, throw a user-friendly error
