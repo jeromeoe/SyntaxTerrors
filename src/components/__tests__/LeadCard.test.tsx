@@ -15,12 +15,12 @@ describe('LeadCard', () => {
     aiEase: 80,
     totalScore: 78,
     insights: ['Insight 1', 'Insight 2'],
-    recommendations: ['Recommendation 1', 'Recommendation 2']
+    recommendations: ['Recommendation 1', 'Recommendation 2'],
   };
 
   it('renders lead information correctly', () => {
     render(<LeadCard lead={mockLead} />);
-    
+
     expect(screen.getByText('Test Company')).toBeInTheDocument();
     expect(screen.getByText('https://example.com')).toBeInTheDocument();
     expect(screen.getByText('78/100')).toBeInTheDocument();
@@ -28,10 +28,10 @@ describe('LeadCard', () => {
 
   it('displays all scores with correct colors', () => {
     render(<LeadCard lead={mockLead} />);
-    
+
     const scores = screen.getAllByRole('group');
     expect(scores).toHaveLength(5);
-    
+
     // Check if high scores (>=80) are green
     const dealPotentialScore = screen.getByLabelText('Deal Potential: 85');
     expect(dealPotentialScore).toHaveClass('text-green-600');
@@ -39,7 +39,7 @@ describe('LeadCard', () => {
 
   it('renders insights and recommendations', () => {
     render(<LeadCard lead={mockLead} />);
-    
+
     expect(screen.getByText('Insight 1')).toBeInTheDocument();
     expect(screen.getByText('Insight 2')).toBeInTheDocument();
     expect(screen.getByText('Recommendation 1')).toBeInTheDocument();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Brain } from 'lucide-react';
 import { LeadInput } from './components/LeadInput';
 import { LeadCard } from './components/LeadCard';
@@ -6,24 +6,24 @@ import { analyzeLead } from './services/leadAnalyzer';
 import type { Lead } from './types';
 
 function App() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (url: string, email?: string) => {
+  const handleSubmit = useCallback(async (url: string, email?: string) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const newLead = await analyzeLead(url, email);
-      setLeads(prev => [newLead, ...prev]);
+      setLeads(prevLeads => [newLead, ...prevLeads]);
     } catch (error) {
       console.error('Error analyzing lead:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -42,7 +42,8 @@ function App() {
             Identify & Qualify High-Potential Business Leads
           </h2>
           <p className="text-gray-600 mb-8 text-center max-w-2xl">
-            Enter a website URL to analyze potential business opportunities. Our AI will evaluate the lead based on multiple criteria and provide actionable insights.
+            Enter a website URL to analyze potential business opportunities. Our AI will evaluate
+            the lead based on multiple criteria and provide actionable insights.
           </p>
           <LeadInput onSubmit={handleSubmit} isLoading={isLoading} />
           {error && (
@@ -64,6 +65,15 @@ function App() {
           </div>
         )}
       </main>
+
+      <footer className="bg-white border-t border-gray-200 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-sm text-gray-500 text-center">
+            AI Lead Qualifier © {new Date().getFullYear()} | All analyses are for informational
+            purposes only
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

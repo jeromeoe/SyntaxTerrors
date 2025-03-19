@@ -6,6 +6,8 @@ import json
 import requests
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+import time
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,6 +42,53 @@ def normalize_score(score, default_value=50):
     # Clamp between 0-100
     return max(0, min(100, float(score)))
 
+def is_valid_email(email: str) -> bool:
+    """
+    Perform basic email validation before sending to API.
+    
+    Args:
+        email (str): Email address to validate
+        
+    Returns:
+        bool: True if the email format is valid
+    """
+    # Basic regex for email validation
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(email_pattern, email))
+
+def is_valid_url(url: str) -> bool:
+    """
+    Perform basic URL validation before sending to API.
+    
+    Args:
+        url (str): URL to validate
+        
+    Returns:
+        bool: True if the URL format is valid
+    """
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except:
+        return False
+
+def sanitize_input(input_string: str) -> str:
+    """
+    Sanitize input to prevent injection attacks.
+    
+    Args:
+        input_string (str): String to sanitize
+        
+    Returns:
+        str: Sanitized string
+    """
+    # Remove any control characters and strip whitespace
+    if not isinstance(input_string, str):
+        return ""
+    
+    sanitized = re.sub(r'[\x00-\x1F\x7F]', '', input_string)
+    return sanitized.strip()
+
 def validate_email(email: str) -> dict:
     """
     Validate an email address using JigsawStack's Email Validation API.
@@ -62,12 +111,19 @@ def validate_email(email: str) -> dict:
     Raises:
         requests.RequestException: If the API request fails
     """
+    # Perform basic validation first
+    if not is_valid_email(email):
+        return {
+            "is_valid": False,
+            "error": "Invalid email format"
+        }
+    
     try:
         # API endpoint for email validation
         endpoint = "https://api.jigsawstack.com/v1/email/validate"
         
         # Build query parameters
-        params = {"email": email}
+        params = {"email": sanitize_input(email)}
         
         # Set headers with API key authentication
         headers = {
@@ -204,6 +260,17 @@ def calculate_scores(scores):
         'totalScore': final_score
     }
 
+@app.route('/api/health-check', methods=['GET', 'HEAD'])
+def health_check():
+    """
+    Simple health check endpoint to verify if the server is running
+    and the client can connect to it.
+    """
+    return jsonify({
+        'status': 'ok',
+        'timestamp': time.time()
+    })
+
 @app.route('/api/analyze-lead', methods=['POST'])
 def analyze_lead():
     """
@@ -229,8 +296,14 @@ def analyze_lead():
                 'message': 'URL is required'
             }), 400
             
-        url = data['url']
-        email = data.get('email')
+        url = sanitize_input(data['url'])
+        email = sanitize_input(data.get('email', ''))
+        
+        # Validate URL format
+        if not is_valid_url(url):
+            return jsonify({
+                'message': 'Invalid URL format'
+            }), 400
         
         # Email validation step (if email is provided)
         if email:
@@ -369,4 +442,4 @@ if __name__ == '__main__':
     # 4. For production deployment (e.g., Heroku):
     #    - Create a Procfile with: web: python app.py
     #    - Set JIGSAWSTACK_API_KEY in environment variables
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
