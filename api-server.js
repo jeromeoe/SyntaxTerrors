@@ -59,6 +59,16 @@ function sanitizeInput(inputString) {
   return inputString.replace(/[\x00-\x1F\x7F]/g, '').trim();
 }
 
+function isProblematicDomain(url) {
+  try {
+    const domain = new URL(url).hostname;
+    const problematicDomains = ['facebook.com', 'fb.com', 'instagram.com', 'tiktok.com'];
+    return problematicDomains.some(prob => domain.includes(prob));
+  } catch {
+    return false;
+  }
+}
+
 function generateMockData(url) {
   // Generate consistent mock data based on URL hash
   const urlHash = crypto.createHash('md5').update(url).digest('hex');
@@ -236,6 +246,17 @@ app.post('/api/analyze-lead', async (req, res) => {
       return res.status(400).json({ message: 'Invalid URL format' });
     }
     
+    // Check for problematic domains
+    if (isProblematicDomain(sanitizedUrl)) {
+      const domain = new URL(sanitizedUrl).hostname;
+      console.warn(`Request for known problematic domain: ${domain}`);
+      return res.status(422).json({
+        message: `This website (${domain}) cannot be analyzed due to access restrictions. Try a different URL.`,
+        status: 'restricted_site',
+        domain
+      });
+    }
+    
     // Email validation step (if provided)
     let emailValidation = null;
     if (sanitizedEmail) {
@@ -314,6 +335,12 @@ app.post('/api/analyze-lead', async (req, res) => {
         const apiResponse = response.data;
         console.log('JigsawStack API response received');
         
+        // Validate response structure
+        if (!apiResponse || typeof apiResponse !== 'object') {
+          console.error('Invalid response structure from JigsawStack API');
+          throw new Error('Invalid response from analysis service');
+        }
+        
         // Extract information from the API response
         const content = apiResponse.content || {};
         
@@ -325,6 +352,14 @@ app.post('/api/analyze-lead', async (req, res) => {
           revenue: content.revenue_potential || 80,
           aiEase: content.ai_integration_ease || 70
         };
+        
+        // Verify scores are valid numbers
+        for (const [key, value] of Object.entries(scores)) {
+          if (typeof value !== 'number' || isNaN(value) || value < 0 || value > 100) {
+            console.warn(`Invalid score for ${key}: ${value}, using default`);
+            scores[key] = 70; // Default mid-range score
+          }
+        }
         
         // Extract insights and recommendations
         let insights = content.insights || [];
@@ -349,6 +384,35 @@ app.post('/api/analyze-lead', async (req, res) => {
       }
     } catch (error) {
       console.error('JigsawStack API error:', error.message);
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        return res.status(422).json({
+          message: `Failed to analyze URL: ${error.response.data?.message || error.message}`,
+          status: 'api_error',
+          statusCode: error.response.status
+        });
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received from API');
+        
+        return res.status(422).json({
+          message: 'No response received from analysis service. Please try again later.',
+          status: 'timeout_error'
+        });
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error setting up request:', error.message);
+        
+        return res.status(422).json({
+          message: `Error setting up analysis: ${error.message}`,
+          status: 'request_setup_error'
+        });
+      }
       
       // Use mock data if API call fails
       console.log('Using mock data as fallback');
@@ -398,7 +462,8 @@ app.post('/api/analyze-lead', async (req, res) => {
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).json({
-      message: `An error occurred while analyzing the lead: ${error.message}`
+      message: `An error occurred while analyzing the lead: ${error.message}`,
+      status: 'server_error'
     });
   }
 });

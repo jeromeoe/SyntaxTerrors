@@ -51,7 +51,10 @@ async function getErrorMessage(response: Response): Promise<string> {
     const responseText = await response.text();
 
     if (isJson && responseText) {
-      const errorData = (await safeParseJson(responseText)) as { message?: string } | null;
+      const errorData = (await safeParseJson(responseText)) as { message?: string; status?: string } | null;
+      if (errorData?.status === 'restricted_site') {
+        return `${errorData.message || 'This website cannot be analyzed.'}`;
+      }
       return errorData?.message || `Server error: ${response.status} ${response.statusText}`;
     } else {
       return `Server error (${response.status}): ${responseText || response.statusText}`;
@@ -169,8 +172,10 @@ export async function analyzeLead(url: string, email?: string, retryCount = 0): 
       if (!response.ok) {
         const errorMessage = await getErrorMessage(response);
 
-        // Handle specific HTTP status codes
+        // Handle specific status codes
         switch (response.status) {
+          case 422: // Unprocessable Entity - Handle for problematic websites
+            throw new Error(errorMessage);
           case 429: // Too Many Requests
             throw new Error('Rate limit exceeded. Please try again later.');
           case 404:
@@ -249,8 +254,13 @@ export async function analyzeLead(url: string, email?: string, retryCount = 0): 
       errorMessage.includes('Connection error') ||
       errorMessage.includes('Bad gateway error');
 
+    // Don't retry for known non-retryable errors like restricted sites
+    const isNonRetryableError = 
+      errorMessage.includes('cannot be analyzed due to access restrictions') ||
+      errorMessage.includes('Invalid URL');
+
     // Implement retry logic
-    if (retryCount < CONFIG.MAX_RETRIES && isRetryableError) {
+    if (retryCount < CONFIG.MAX_RETRIES && isRetryableError && !isNonRetryableError) {
       console.log(
         `Retrying analysis in ${Math.round(retryDelay)}ms... (${retryCount + 1}/${CONFIG.MAX_RETRIES})`
       );
