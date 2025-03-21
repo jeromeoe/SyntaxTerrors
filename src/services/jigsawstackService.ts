@@ -10,8 +10,8 @@ import { Lead } from '../types';
 
 // Configuration for the JigsawStack service
 const CONFIG = {
-  // Base API URL - uses the backend proxy
-  API_URL: import.meta.env.PROD ? '/api' : 'http://localhost:5000/api',
+  // Base API URL - always use relative URL with the proxy configured in Vite 
+  API_URL: '/api',
   // Request timeout in milliseconds (15 seconds)
   TIMEOUT: 15000,
 };
@@ -120,6 +120,54 @@ export async function analyzeWebsite(url: string, email?: string): Promise<Lead>
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('Website analysis request timed out');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Search for information using JigsawStack's web search API
+ * 
+ * @param query - The search query
+ * @returns Promise with search results
+ */
+export async function search(query: string): Promise<any> {
+  try {
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
+
+    try {
+      const response = await fetch(`${CONFIG.API_URL}/search?query=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-Client-Application': 'AI-Lead-Qualifier',
+        },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage: string;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || `Error: ${response.status}`;
+        } catch {
+          errorMessage = errorText || `Error: ${response.status}`;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Search request timed out');
     }
     throw error;
   }

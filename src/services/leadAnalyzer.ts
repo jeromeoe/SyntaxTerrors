@@ -4,7 +4,7 @@ import type { Lead } from '../types';
  * Configuration for the lead analyzer service
  */
 const CONFIG = {
-  // Always use relative URL with the proxy configured in Vite
+  // Always use relative URL in development, will be proxied by Vite
   API_URL: '/api/analyze-lead',
   // Retry configuration
   MAX_RETRIES: 3,
