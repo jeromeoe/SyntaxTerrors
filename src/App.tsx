@@ -10,12 +10,12 @@ function App() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = useCallback(async (url: string, email?: string) => {
+  const handleSubmit = useCallback(async (url: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const newLead = await analyzeLead(url, email);
+      const newLead = await analyzeLead(url);
       setLeads(prevLeads => [newLead, ...prevLeads]);
     } catch (error) {
       console.error('Error analyzing lead:', error);

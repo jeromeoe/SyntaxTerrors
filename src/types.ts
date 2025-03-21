@@ -22,6 +22,10 @@ export interface Lead {
   totalScore: number;
   /** Indicates if mock data was used (if API failed) */
   usesMockData?: boolean;
+  /** Indicates if local scraping was used instead of external API */
+  isLocalAnalysis?: boolean;
+  /** Indicates if fallback data was used (after scraping error) */
+  usesFallbackData?: boolean;
   /** Additional scoring details */
   scoringDetails?: {
     /** Weights applied to each metric */
@@ -39,19 +43,18 @@ export interface Lead {
     /** Total penalty applied */
     totalPenalty: number;
   };
-  /** Email information if provided */
-  email?: {
-    /** The email address */
-    address: string;
-    /** Email validation results */
-    validation: {
-      is_valid: boolean;
-      is_disposable?: boolean;
-      is_role_account?: boolean;
-      has_mx_records?: boolean;
-      domain?: string;
-      error?: string;
-    };
+  /** Additional information about the page that was scraped */
+  pageInfo?: {
+    /** Page title */
+    title: string;
+    /** Meta description */
+    description: string;
+    /** Number of headings found */
+    headingsCount: number;
+    /** Length of text extracted */
+    textLength: number;
+    /** When extraction was performed */
+    extractTime: string;
   };
   /** Array of key insights about the lead */
   insights: string[];
@@ -60,27 +63,11 @@ export interface Lead {
 }
 
 /**
- * Represents the scoring metrics for a lead
- */
-export interface LeadScoring {
-  /** Score indicating the likelihood of closing a deal (0-100) */
-  dealPotential: number;
-  /** Score indicating how feasible the implementation would be (0-100) */
-  practicality: number;
-  /** Score indicating the complexity of implementation (0-100) */
-  difficulty: number;
-  /** Score indicating potential revenue from the deal (0-100) */
-  revenue: number;
-  /** Score indicating how easily AI can be integrated (0-100) */
-  aiEase: number;
-}
-
-/**
  * Props for the LeadInput component
  */
 export interface LeadInputProps {
-  /** Callback function to handle URL and optional email submission */
-  onSubmit: (url: string, email?: string) => void;
+  /** Callback function to handle URL submission */
+  onSubmit: (url: string) => void;
   /** Loading state to disable input during processing */
   isLoading: boolean;
 }

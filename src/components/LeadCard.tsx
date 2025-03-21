@@ -9,6 +9,7 @@ import {
   Mail,
   ExternalLink,
   AlertTriangle,
+  Cpu,
 } from 'lucide-react';
 import type { LeadCardProps } from '../types';
 
@@ -85,6 +86,20 @@ export function LeadCard({ lead }: LeadCardProps) {
           <AlertTriangle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-amber-800">
             This analysis uses simulated data because the website could not be accessed directly.
+          </div>
+        </div>
+      )}
+
+      {lead.isLocalAnalysis && (
+        <div className="mb-4 bg-blue-50 p-3 rounded flex items-start gap-2">
+          <Cpu size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-blue-800">
+            Analysis performed using local scraping without external API calls.
+            {lead.usesFallbackData && (
+              <span className="block mt-1 text-amber-600">
+                Used fallback data due to scraping issues.
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -168,6 +183,20 @@ export function LeadCard({ lead }: LeadCardProps) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {lead.pageInfo && (
+        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <h4 className="font-semibold text-gray-800 mb-2">Page Information</h4>
+          <div className="text-sm text-gray-700">
+            <p className="mb-1"><span className="font-medium">Title:</span> {lead.pageInfo.title}</p>
+            {lead.pageInfo.description && (
+              <p className="mb-1"><span className="font-medium">Description:</span> {lead.pageInfo.description}</p>
+            )}
+            <p className="mb-1"><span className="font-medium">Content analyzed:</span> {lead.pageInfo.textLength} characters</p>
+            <p className="mb-1"><span className="font-medium">Headings found:</span> {lead.pageInfo.headingsCount}</p>
+          </div>
         </div>
       )}
 
