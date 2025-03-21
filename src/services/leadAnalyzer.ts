@@ -220,6 +220,11 @@ export async function analyzeLead(url: string, email?: string, retryCount = 0): 
         throw new Error('Invalid data structure received from server');
       }
 
+      // Add notification if mock data was used
+      if (data.usesMockData) {
+        console.info('Note: This analysis uses simulated data as the API was unavailable');
+      }
+
       return data;
     } finally {
       // Clear timeout to prevent memory leaks

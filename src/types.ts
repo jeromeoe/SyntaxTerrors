@@ -20,6 +20,8 @@ export interface Lead {
   aiEase: number;
   /** Overall score calculated from individual metrics (0-100) */
   totalScore: number;
+  /** Indicates if mock data was used (if API failed) */
+  usesMockData?: boolean;
   /** Additional scoring details */
   scoringDetails?: {
     /** Weights applied to each metric */

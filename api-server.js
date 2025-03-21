@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import { URL } from 'url';
+import fs from 'fs-extra';
 
 // Load environment variables
 dotenv.config();
@@ -17,8 +18,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the dist directory
-app.use(express.static(join(__dirname, 'dist')));
+// Check if we're in production mode
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Only serve static files in production mode and if the dist directory exists
+const distDir = join(__dirname, 'dist');
+if (isProduction && fs.existsSync(distDir)) {
+  console.log('Serving static files from:', distDir);
+  app.use(express.static(distDir));
+} else {
+  console.log('Running in development mode or dist directory not found. Skipping static file serving.');
+}
 
 // Get JigsawStack API key from environment variables
 const JIGSAWSTACK_API_KEY = process.env.VITE_JIGSAWSTACK_API_KEY || process.env.JIGSAWSTACK_API_KEY;
@@ -229,6 +239,81 @@ app.get('/api/health-check', (req, res) => {
   });
 });
 
+// Search endpoint
+app.get('/api/search', async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    // Validate the query parameter
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return res.status(400).json({
+        message: 'Search query is required'
+      });
+    }
+    
+    // Sanitize the input
+    const sanitizedQuery = sanitizeInput(query);
+    
+    // Check if API key is available
+    if (!JIGSAWSTACK_API_KEY) {
+      console.warn('No JigsawStack API key available for search endpoint');
+      return res.status(422).json({
+        message: 'Search service is not available. API key is missing.',
+        status: 'service_unavailable'
+      });
+    }
+    
+    // Log the search request
+    console.log(`Processing search request for query: "${sanitizedQuery}"`);
+    
+    // Make request to JigsawStack's web search API
+    try {
+      const response = await axios({
+        method: 'get',
+        url: 'https://api.jigsawstack.com/v1/web/search',
+        params: { query: sanitizedQuery },
+        headers: {
+          'x-api-key': JIGSAWSTACK_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        timeout: 15000 // 15 seconds timeout
+      });
+      
+      // Log success
+      console.log(`Search API response status: ${response.status}`);
+      
+      // Return the search results
+      res.json(response.data);
+    } catch (error) {
+      console.error('Search API error:', error.message);
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      } else if (error.request) {
+        console.error('No response received from search API');
+      } else {
+        console.error('Error setting up request:', error.message);
+      }
+      
+      // Return error response with 422 status
+      res.status(422).json({
+        message: `Search failed: ${error.message}`,
+        status: 'search_failed'
+      });
+    }
+  } catch (error) {
+    console.error('Error processing search request:', error);
+    res.status(500).json({
+      message: `An error occurred while processing search request: ${error.message}`,
+      status: 'server_error'
+    });
+  }
+});
+
 app.post('/api/analyze-lead', async (req, res) => {
   try {
     const { url, email } = req.body;
@@ -286,11 +371,14 @@ app.post('/api/analyze-lead', async (req, res) => {
     console.log(`Analyzing URL: ${sanitizedUrl}`);
     
     let apiData;
+    let usesMockData = false;
+    
     try {
       // Check if API key is available
       if (!JIGSAWSTACK_API_KEY) {
         console.log('Using mock data (no API key)');
         apiData = generateMockData(sanitizedUrl);
+        usesMockData = true;
       } else {
         // Call JigsawStack API
         const jigsawstackUrl = 'https://api.jigsawstack.com/v1/ai/web-scrape';
@@ -385,38 +473,20 @@ app.post('/api/analyze-lead', async (req, res) => {
     } catch (error) {
       console.error('JigsawStack API error:', error.message);
       
+      // Generate fallback mock data
+      console.log('Using mock data as fallback after API error');
+      apiData = generateMockData(sanitizedUrl);
+      usesMockData = true;
+      
+      // Log details about the error for diagnostics, but continue with mock data
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
-        
-        return res.status(422).json({
-          message: `Failed to analyze URL: ${error.response.data?.message || error.message}`,
-          status: 'api_error',
-          statusCode: error.response.status
-        });
       } else if (error.request) {
-        // The request was made but no response was received
         console.error('No response received from API');
-        
-        return res.status(422).json({
-          message: 'No response received from analysis service. Please try again later.',
-          status: 'timeout_error'
-        });
       } else {
-        // Something happened in setting up the request that triggered an Error
         console.error('Error setting up request:', error.message);
-        
-        return res.status(422).json({
-          message: `Error setting up analysis: ${error.message}`,
-          status: 'request_setup_error'
-        });
       }
-      
-      // Use mock data if API call fails
-      console.log('Using mock data as fallback');
-      apiData = generateMockData(sanitizedUrl);
     }
     
     // Calculate detailed scores
@@ -446,7 +516,8 @@ app.post('/api/analyze-lead', async (req, res) => {
         totalPenalty: scoringDetails.totalPenalty
       },
       insights: apiData.insights,
-      recommendations: apiData.recommendations
+      recommendations: apiData.recommendations,
+      usesMockData: usesMockData // Indicate if mock data was used
     };
     
     // If email was provided and validated, include in response
@@ -468,12 +539,21 @@ app.post('/api/analyze-lead', async (req, res) => {
   }
 });
 
-// Handle all other routes - important for SPA with client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, 'dist', 'index.html'));
-});
+// Only handle SPA routes in production mode
+if (isProduction && fs.existsSync(join(distDir, 'index.html'))) {
+  // Handle all other routes - important for SPA with client-side routing
+  app.get('*', (req, res) => {
+    res.sendFile(join(__dirname, 'dist', 'index.html'));
+  });
+} else {
+  // In development, we just provide API endpoints
+  app.get('*', (req, res) => {
+    res.status(404).json({ message: 'API endpoint not found. In development mode, frontend is served by Vite.' });
+  });
+}
 
 const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`API server running at http://localhost:${PORT}`);
+  console.log(`Mode: ${isProduction ? 'Production' : 'Development'}`);
 });

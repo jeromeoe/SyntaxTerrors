@@ -8,6 +8,7 @@ import {
   Info,
   Mail,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 import type { LeadCardProps } from '../types';
 
@@ -78,6 +79,15 @@ export function LeadCard({ lead }: LeadCardProps) {
           </a>
         </div>
       </header>
+
+      {lead.usesMockData && (
+        <div className="mb-4 bg-amber-50 p-3 rounded flex items-start gap-2">
+          <AlertTriangle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-amber-800">
+            This analysis uses simulated data because the website could not be accessed directly.
+          </div>
+        </div>
+      )}
 
       {lead.email && (
         <div className="mb-4 bg-blue-50 p-3 rounded flex items-start gap-2">
