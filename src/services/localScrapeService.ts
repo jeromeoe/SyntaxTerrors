@@ -88,9 +88,9 @@ function generateInsights(url: string, scores: {
   revenue: number;
   aiEase: number;
 }): string[] {
-  const domain = new URL(url).hostname;
+  const urlObj = new URL(url);
   const insights = [
-    `${domain} shows potential for automation in multiple areas`,
+    `${urlObj.hostname} shows potential for automation in multiple areas`,
     `Business appears to be in the ${scores.dealPotential > 80 ? 'enterprise' : 'mid-market'} segment`,
     'Website indicates need for improved customer engagement solutions',
     'Technical implementation appears to be feasible based on site structure'
@@ -118,7 +118,6 @@ function generateRecommendations(url: string, scores: {
   revenue: number;
   aiEase: number;
 }): string[] {
-  const domain = new URL(url).hostname;
   const recommendations = [
     `Prepare a tailored proposal highlighting ${scores.dealPotential > 80 ? 'ROI' : 'growth potential'}`,
     'Schedule an initial discovery call to identify specific pain points',
@@ -141,11 +140,11 @@ function generateRecommendations(url: string, scores: {
  * Generate mock page info based on URL
  */
 function generatePageInfo(url: string) {
-  const domain = new URL(url).hostname;
-  const titlePrefix = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+  const urlObj = new URL(url);
+  const titlePrefix = urlObj.hostname.split('.')[0].charAt(0).toUpperCase() + urlObj.hostname.split('.')[0].slice(1);
   
   return {
-    title: `${titlePrefix} - ${getSeededRandom(url) > 0.5 ? 'Home' : 'Welcome to ' + domain}`,
+    title: `${titlePrefix} - ${getSeededRandom(url) > 0.5 ? 'Home' : 'Welcome to ' + urlObj.hostname}`,
     description: `${titlePrefix} provides innovative solutions for businesses of all sizes.`,
     headingsCount: Math.floor(getSeededRandom(`${url}-headings`, 5, 15)),
     textLength: Math.floor(getSeededRandom(`${url}-text`, 2000, 10000)),
@@ -184,14 +183,14 @@ export async function mockLocalScrape(url: string): Promise<Lead> {
   const totalScore = calculateTotalScore(scores);
 
   // Extract domain for company name
-  const domain = new URL(url).hostname;
-  const companyName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+  const urlObj = new URL(url);
+  const companyName = urlObj.hostname.split('.')[0].charAt(0).toUpperCase() + urlObj.hostname.split('.')[0].slice(1);
 
   // Build the lead object
   const lead: Lead = {
     id: generateId(url),
     url,
-    companyName: `${companyName} ${domain.includes('.com') ? 'Inc.' : 'LLC'}`,
+    companyName: `${companyName} ${urlObj.hostname.includes('.com') ? 'Inc.' : 'LLC'}`,
     ...scores,
     totalScore,
     insights: generateInsights(url, scores),

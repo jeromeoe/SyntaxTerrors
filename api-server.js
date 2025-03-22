@@ -2,16 +2,27 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import fs from 'fs-extra';
+import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 
-app.use(cors());
+// Enable CORS for all routes
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Accept']
+}));
+
 app.use(express.json());
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ message: err.message || 'Internal server error' });
+});
 
 function generateId(url) {
   return crypto.createHash('sha256').update(url).digest('hex').slice(0, 8);
@@ -104,14 +115,20 @@ function generatePageInfo(url) {
   };
 }
 
-app.get('/api/health-check', (req, res) => {
+// Root path handler
+app.get('/', (req, res) => {
   res.json({
     status: 'ok',
-    timestamp: Date.now()
+    message: 'AI Lead Qualifier API',
+    endpoints: {
+      healthCheck: '/api/health-check',
+      analyze: '/api/local-scrape'
+    }
   });
 });
 
-app.post('/api/local-scrape', async (req, res) => {
+// API Routes
+app.post('/api/local-scrape', (req, res) => {
   try {
     const { url } = req.body;
     
@@ -119,15 +136,16 @@ app.post('/api/local-scrape', async (req, res) => {
       return res.status(400).json({ message: 'URL is required' });
     }
 
+    // Validate URL
     try {
       new URL(url);
     } catch {
       return res.status(400).json({ message: 'Invalid URL format' });
     }
 
+    // Generate analysis data
     const scores = generateMockScores(url);
     const totalScore = calculateTotalScore(scores);
-
     const domain = new URL(url).hostname;
     const companyName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
 
@@ -164,7 +182,25 @@ app.post('/api/local-scrape', async (req, res) => {
   }
 });
 
-const PORT = 5000;
-app.listen(PORT, () => {
+// Health check endpoint
+app.get('/api/health-check', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: Date.now()
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`API server running at http://localhost:${PORT}`);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
 });

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Search, AlertCircle, Cpu } from 'lucide-react';
+import { Search, AlertCircle } from 'lucide-react';
 import type { LeadInputProps } from '../types';
 
 export function LeadInput({ onSubmit, isLoading }: LeadInputProps) {

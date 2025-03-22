@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Brain } from 'lucide-react';
 import { LeadInput } from './components/LeadInput';
 import { LeadCard } from './components/LeadCard';

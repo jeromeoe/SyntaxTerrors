@@ -20,6 +20,17 @@ export interface Lead {
   aiEase: number;
   /** Overall score calculated from individual metrics (0-100) */
   totalScore: number;
+  /** Optional email information if provided */
+  email?: {
+    address: string;
+    validation: {
+      is_valid: boolean;
+      is_disposable?: boolean;
+      is_role_account?: boolean;
+      has_mx_records?: boolean;
+      domain?: string;
+    };
+  };
   /** Indicates if mock data was used (if API failed) */
   usesMockData?: boolean;
   /** Indicates if local scraping was used instead of external API */
