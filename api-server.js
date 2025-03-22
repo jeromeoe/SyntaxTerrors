@@ -2,27 +2,21 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 
-// Enable CORS for all routes
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Accept']
-}));
-
+// Enable CORS for development
+app.use(cors());
 app.use(express.json());
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ message: err.message || 'Internal server error' });
-});
+// Only serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(join(__dirname, 'dist')));
+}
 
 function generateId(url) {
   return crypto.createHash('sha256').update(url).digest('hex').slice(0, 8);
@@ -114,18 +108,6 @@ function generatePageInfo(url) {
     extractTime: new Date().toISOString()
   };
 }
-
-// Root path handler
-app.get('/', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'AI Lead Qualifier API',
-    endpoints: {
-      healthCheck: '/api/health-check',
-      analyze: '/api/local-scrape'
-    }
-  });
-});
 
 // API Routes
 app.post('/api/local-scrape', (req, res) => {
