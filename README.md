@@ -8,21 +8,20 @@ A powerful tool that analyzes websites to identify and qualify potential busines
 - Email validation
 - Advanced scoring algorithm
 - Detailed insights and recommendations
-- Secure backend proxy to JigsawStack API
+- Web scraping with Puppeteer
 
 ## Tech Stack
 
 - **Frontend**: React, TypeScript, Tailwind CSS
-- **Backend**: Python Flask API
-- **APIs**: JigsawStack for web scraping and email validation
+- **Backend**: Express.js API with Puppeteer for web scraping
+- **Python Backend**: Flask API (alternative backend)
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v16+)
-- Python (v3.8+)
-- JigsawStack API key
+- Python (v3.8+) (if using the Python backend)
 
 ### Setup
 
@@ -33,38 +32,38 @@ A powerful tool that analyzes websites to identify and qualify potential busines
 # Install frontend dependencies
 npm install
 
-# Install backend dependencies
+# Install backend dependencies (if using Python backend)
 pip install -r backend/requirements.txt
 ```
 
-3. Create a `.env` file in the root directory with your JigsawStack API key:
-
-```
-JIGSAWSTACK_API_KEY=your_api_key_here
-VITE_SUPABASE_ANON_KEY=your_supabase_key
-VITE_SUPABASE_URL=your_supabase_url
-```
-
-4. Start the development servers:
+3. Start the development servers:
 
 ```bash
-# Start the frontend
+# Start both frontend and backend
+npm run start
+
+# Or start them individually:
+# Frontend only
 npm run dev
 
-# Start the backend in a separate terminal
-python backend/app.py
+# Backend only
+npm run server
 ```
 
-5. Access the application at `http://localhost:5173`
+4. Access the application at `http://localhost:5173`
 
 ## Backend Architecture
 
-The backend serves as a secure proxy between the frontend and JigsawStack API, handling:
+The application has two backend options:
 
-1. Email validation
-2. Website analysis
-3. Score calculation
-4. Error handling
+1. **Node.js backend (api-server.js)**: 
+   - Uses Puppeteer for web scraping
+   - Provides lead analysis through a mock LLM implementation
+   - Handles all API endpoints for the application
+
+2. **Python Flask backend (backend/app.py)**:
+   - Provides an alternative implementation
+   - Uses mock data generation for lead analysis
 
 ## Deployment
 
@@ -80,21 +79,9 @@ npm run build
 
 The backend can be deployed to platforms like Heroku, AWS, or Google Cloud.
 
-For Heroku deployment:
-
-1. Create a `Procfile` in the root directory:
-```
-web: cd backend && python app.py
-```
-
-2. Set the environment variables on your hosting platform:
-```
-JIGSAWSTACK_API_KEY=your_api_key_here
-```
-
 ## API Reference
 
-### `/api/analyze-lead`
+### `/api/local-scrape`
 
 **Method**: POST
 

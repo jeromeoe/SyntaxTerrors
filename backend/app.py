@@ -16,11 +16,6 @@ app = Flask(__name__)
 # Enable CORS for all routes and origins
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Get API key from environment variables
-JIGSAWSTACK_API_KEY = os.getenv('JIGSAWSTACK_API_KEY')
-if not JIGSAWSTACK_API_KEY:
-    raise ValueError("JIGSAWSTACK_API_KEY environment variable is not set")
-
 def generate_id(url: str) -> str:
     """Generate a unique ID from a URL using SHA-256 hash."""
     return hashlib.sha256(url.encode()).hexdigest()[:8]
@@ -90,87 +85,6 @@ def sanitize_input(input_string: str) -> str:
     sanitized = re.sub(r'[\x00-\x1F\x7F]', '', input_string)
     return sanitized.strip()
 
-def validate_email(email: str) -> dict:
-    """
-    Validate an email address using JigsawStack's Email Validation API.
-    
-    This function makes a GET request to the JigsawStack email validation endpoint
-    and returns the validation result. The API key is sent in the header for authentication.
-    
-    Args:
-        email (str): The email address to validate
-        
-    Returns:
-        dict: A dictionary containing validation results with the following keys:
-            - is_valid (bool): Whether the email is valid
-            - is_disposable (bool): Whether the email is from a disposable domain
-            - is_role_account (bool): Whether the email is a role account (e.g., info@, support@)
-            - has_mx_records (bool): Whether the domain has valid MX records
-            - domain (str): The domain part of the email
-            - error (str, optional): Error message if the validation failed
-            
-    Raises:
-        requests.RequestException: If the API request fails
-    """
-    # Perform basic validation first
-    if not is_valid_email(email):
-        return {
-            "is_valid": False,
-            "error": "Invalid email format"
-        }
-    
-    try:
-        # API endpoint for email validation
-        endpoint = "https://api.jigsawstack.com/v1/email/validate"
-        
-        # Build query parameters
-        params = {"email": sanitize_input(email)}
-        
-        # Set headers with API key authentication
-        headers = {
-            "x-api-key": JIGSAWSTACK_API_KEY,
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-        
-        # Log the request being made
-        app.logger.info(f"Validating email: {email}")
-        
-        # Make the GET request
-        response = requests.get(endpoint, params=params, headers=headers, timeout=10)
-        
-        # Log response status
-        app.logger.info(f"Email validation response status: {response.status_code}")
-        
-        # Check if response is successful
-        if response.status_code == 200:
-            validation_result = response.json()
-            app.logger.info(f"Email validation result: {validation_result}")
-            return validation_result
-        else:
-            # Handle error responses
-            error_message = f"Email validation failed with status code: {response.status_code}"
-            app.logger.error(error_message)
-            
-            # Try to extract error details from response
-            try:
-                error_details = response.json()
-                app.logger.error(f"Error details: {error_details}")
-            except:
-                error_details = {"message": response.text or "Unknown error"}
-                
-            return {
-                "is_valid": False,
-                "error": error_details.get("message", error_message)
-            }
-            
-    except requests.RequestException as e:
-        app.logger.error(f"Error validating email: {str(e)}")
-        return {
-            "is_valid": False,
-            "error": f"API request failed: {str(e)}"
-        }
-
 def calculate_scores(scores):
     """
     Advanced Lead Scoring System
@@ -201,11 +115,11 @@ def calculate_scores(scores):
     
     # Define weights for each metric (total should equal 1)
     weights = {
-        'dealPotential': 0.25,  # Increased from 0.3 to 0.25
-        'practicality': 0.20,   # Unchanged at 0.2
-        'revenue': 0.30,        # Increased from 0.25 to 0.3
-        'aiEase': 0.15,         # Unchanged at 0.15
-        'difficulty': 0.10      # Unchanged at 0.1
+        'dealPotential': 0.25,
+        'practicality': 0.20,
+        'revenue': 0.30,
+        'aiEase': 0.15,
+        'difficulty': 0.10
     }
     
     # Critical thresholds that trigger penalties
@@ -272,12 +186,13 @@ def health_check():
         'timestamp': time.time()
     })
 
+# Simplified mock implementation for the Flask backend
+# This completely removes JigsawStack dependency
 @app.route('/api/analyze-lead', methods=['POST'])
 def analyze_lead():
     """
-    Analyze a lead based on the provided URL and email using JigsawStack's Web Scraper API.
-    
-    This endpoint first validates the email (if provided) and then analyzes the website.
+    Analyze a lead based on the provided URL. Uses a mock implementation
+    instead of external API calls to JigsawStack.
     
     Expected JSON payload: 
     {
@@ -307,157 +222,48 @@ def analyze_lead():
             }), 400
         
         # Email validation step (if email is provided)
+        email_validation = None
         if email:
-            app.logger.info(f"Email provided: {email}. Beginning validation...")
+            app.logger.info(f"Email provided: {email}")
             
-            # Call our email validation function
-            email_validation = validate_email(email)
-            
-            # If email is not valid, return error
-            if not email_validation.get('is_valid', False):
-                error_message = email_validation.get('error', 'Email validation failed')
-                app.logger.warning(f"Email validation failed: {error_message}")
-                
+            # Basic validation only - no external API call
+            if is_valid_email(email):
+                email_validation = {
+                    'is_valid': True,
+                    'is_disposable': False,
+                    'has_mx_records': True
+                }
+            else:
                 return jsonify({
-                    'message': f"Email validation failed: {error_message}",
-                    'validationDetails': email_validation
+                    'message': f"Invalid email format: {email}",
                 }), 400
-            
-            # Log successful validation
-            app.logger.info(f"Email successfully validated: {email}")
-            
-            # If email is disposable, log a warning but continue
-            if email_validation.get('is_disposable', False):
-                app.logger.warning(f"Warning: {email} is a disposable email address")
         
-        # Proceed with website analysis
-        app.logger.info(f"Analyzing URL: {url}")
-        
-        # Call JigsawStack API with improved error handling
-        jigsawstack_url = 'https://api.jigsawstack.com/v1/ai/web-scrape'
-        headers = {
-            'x-api-key': JIGSAWSTACK_API_KEY,
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'application/json'
+        # Generate deterministic mock scores based on the URL
+        url_hash = hashlib.md5(url.encode()).digest()
+        scores = {
+            'dealPotential': int.from_bytes(url_hash[0:2], byteorder='big') % 30 + 60,
+            'practicality': int.from_bytes(url_hash[2:4], byteorder='big') % 30 + 60,
+            'difficulty': int.from_bytes(url_hash[4:6], byteorder='big') % 30 + 60,
+            'revenue': int.from_bytes(url_hash[6:8], byteorder='big') % 30 + 60,
+            'aiEase': int.from_bytes(url_hash[8:10], byteorder='big') % 30 + 60
         }
-        
-        # Build payload with options to improve success rate
-        payload = {
-            'url': url,
-            'extraction_prompt': 'Analyze the website for business lead qualification and provide scores for deal potential, practicality, difficulty, revenue potential, and AI integration ease. Each score should be between 0-100. Also provide insights about the business and recommendations for engagement.',
-            'options': {
-                'wait_for_selector': 'body',
-                'javascript': True,
-                'blocked_resource_types': ['image', 'media', 'font', 'stylesheet'],
-                'timeout': 15000  # 15 seconds timeout
-            }
-        }
-        
-        # If email was validated, include it in the request for tracking
-        if email and email_validation.get('is_valid', False):
-            payload['metadata'] = {
-                'email': email,
-                'validationResult': email_validation
-            }
-        
-        app.logger.info(f"Making request to JigsawStack API: {jigsawstack_url}")
-        response = requests.post(
-            jigsawstack_url, 
-            json=payload, 
-            headers=headers, 
-            timeout=20  # 20 seconds timeout
-        )
-        
-        # Log response status
-        app.logger.info(f"JigsawStack API response status: {response.status_code}")
-        
-        # Raise exception for non-200 responses
-        if response.status_code != 200:
-            error_message = f"JigsawStack API error: {response.status_code}"
-            app.logger.error(error_message)
             
-            try:
-                error_details = response.json()
-                app.logger.error(f"Error details: {error_details}")
-            except:
-                error_details = {"message": response.text or "Unknown error"}
-                
-            # If API call fails, generate mock data
-            app.logger.info("Using mock data as fallback")
+        insights = [
+            "Strong market presence in their industry",
+            "Clear need for automation in their processes",
+            "Potential budget available for implementation",
+            "Technical team likely in place for integration"
+        ]
             
-            # Generate mock scores
-            scores = {
-                'dealPotential': int(hashlib.md5(f"{url}-deal".encode()).hexdigest(), 16) % 30 + 60,
-                'practicality': int(hashlib.md5(f"{url}-prac".encode()).hexdigest(), 16) % 30 + 60,
-                'difficulty': int(hashlib.md5(f"{url}-diff".encode()).hexdigest(), 16) % 30 + 60,
-                'revenue': int(hashlib.md5(f"{url}-rev".encode()).hexdigest(), 16) % 30 + 60,
-                'aiEase': int(hashlib.md5(f"{url}-ai".encode()).hexdigest(), 16) % 30 + 60
-            }
-            
-            insights = [
-                "Strong market presence in their industry",
-                "Clear need for automation in their processes",
-                "Potential budget available for implementation",
-                "Technical team likely in place for integration"
-            ]
-            
-            recommendations = [
-                "Focus on ROI in initial pitch",
-                "Highlight successful case studies similar to their industry",
-                "Prepare technical implementation plan",
-                "Schedule demo with their technical team"
-            ]
-            
-            api_data = {
-                'scores': scores,
-                'insights': insights,
-                'recommendations': recommendations
-            }
-        else:
-            # Parse API response
-            api_response = response.json()
-            app.logger.info(f"JigsawStack API response: {api_response}")
-            
-            # Extract information from the API response
-            try:
-                content = api_response.get('content', {})
-                
-                # Extract scores from response or generate reasonable defaults
-                scores = {
-                    'dealPotential': content.get('deal_potential', 75),
-                    'practicality': content.get('practicality', 70),
-                    'difficulty': content.get('difficulty', 65),
-                    'revenue': content.get('revenue_potential', 80),
-                    'aiEase': content.get('ai_integration_ease', 70)
-                }
-                
-                # Extract insights and recommendations
-                insights = content.get('insights', [])
-                if not insights or not isinstance(insights, list):
-                    insights = ["Potential business opportunity detected", 
-                                "Company appears to be in growth phase",
-                                "Digital transformation likely underway"]
-                
-                recommendations = content.get('recommendations', [])
-                if not recommendations or not isinstance(recommendations, list):
-                    recommendations = ["Perform detailed needs assessment",
-                                      "Prepare tailored solution proposal",
-                                      "Identify key decision makers in the organization"]
-                
-                api_data = {
-                    'scores': scores,
-                    'insights': insights,
-                    'recommendations': recommendations
-                }
-            except Exception as e:
-                app.logger.error(f"Error parsing API response: {str(e)}")
-                return jsonify({
-                    'message': f'Error processing API response: {str(e)}'
-                }), 500
+        recommendations = [
+            "Focus on ROI in initial pitch",
+            "Highlight successful case studies similar to their industry",
+            "Prepare technical implementation plan",
+            "Schedule demo with their technical team"
+        ]
         
         # Calculate detailed scores using our enhanced algorithm
-        scoring_details = calculate_scores(api_data.get('scores', {}))
+        scoring_details = calculate_scores(scores)
         
         # Extract domain for company name
         domain = urlparse(url).netloc
@@ -468,7 +274,7 @@ def analyze_lead():
             'id': generate_id(url),
             'url': url,
             'companyName': company_name,
-            **api_data.get('scores', {}),  # Include original scores
+            **scores,  # Include original scores
             **scoring_details['normalizedScores'],  # Include normalized scores
             'totalScore': scoring_details['totalScore'],
             'scoringDetails': {
@@ -477,12 +283,12 @@ def analyze_lead():
                 'rawTotal': scoring_details['rawTotal'],
                 'totalPenalty': scoring_details['totalPenalty']
             },
-            'insights': api_data.get('insights', []),
-            'recommendations': api_data.get('recommendations', [])
+            'insights': insights,
+            'recommendations': recommendations
         }
         
         # If email was provided and validated, include in response
-        if email and email_validation.get('is_valid', False):
+        if email and email_validation:
             response_data['email'] = {
                 'address': email,
                 'validation': email_validation
@@ -490,11 +296,6 @@ def analyze_lead():
         
         return jsonify(response_data)
         
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"JigsawStack API error: {str(e)}")
-        return jsonify({
-            'message': f'Error connecting to JigsawStack API: {str(e)}'
-        }), 500
     except Exception as e:
         app.logger.error(f"Error processing request: {str(e)}")
         return jsonify({
@@ -503,10 +304,7 @@ def analyze_lead():
 
 if __name__ == '__main__':
     # Instructions for deployment:
-    # 1. Create a .env file with your JIGSAWSTACK_API_KEY
+    # 1. Create a .env file with your configuration
     # 2. Install dependencies: pip install -r requirements.txt
     # 3. Run locally: python app.py
-    # 4. For production deployment (e.g., Heroku):
-    #    - Create a Procfile with: web: python app.py
-    #    - Set JIGSAWSTACK_API_KEY in environment variables
     app.run(debug=True, host='0.0.0.0', port=5000)

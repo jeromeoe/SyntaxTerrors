@@ -22,9 +22,9 @@ function getRandomScore() {
 
 function calculateTotalScore(scores) {
   const weights = {
-    dealPotential: 0.3,
+    dealPotential: 0.25,
     practicality: 0.2,
-    revenue: 0.25,
+    revenue: 0.3,
     aiEase: 0.15,
     difficulty: 0.1
   };

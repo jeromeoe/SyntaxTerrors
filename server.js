@@ -22,7 +22,7 @@ app.use('/api', createProxyMiddleware({
   pathRewrite: {
     '^/api': '/api' // Keep the /api prefix
   },
-  onProxyReq: (proxyReq, req, res) => {
+  onProxyReq: (proxyReq, req, _res) => {
     console.log(`Proxying ${req.method} request to: ${proxyReq.path}`);
   },
   onError: (err, req, res) => {
