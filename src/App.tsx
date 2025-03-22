@@ -47,8 +47,9 @@ function App() {
           </p>
           <LeadInput onSubmit={handleSubmit} isLoading={isLoading} />
           {error && (
-            <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-md" role="alert">
-              {error}
+            <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-md max-w-2xl w-full" role="alert">
+              <h3 className="font-semibold mb-1">Analysis Failed</h3>
+              <p>{error}</p>
             </div>
           )}
         </div>
